@@ -3,18 +3,15 @@
 echo "Installing required packages..."
 sudo apt install curl docker.io docker-compose jq -y
 
-# Start Docker service
 echo "Starting Docker service..."
 sudo systemctl start docker
 sudo systemctl enable docker
 
-# Check Docker service status
 if ! sudo systemctl is-active --quiet docker; then
     echo "Error: Docker service is not running. Please check 'systemctl status docker' for details."
     exit 1
 fi
 
-# Add current user to docker group
 sudo usermod -aG docker $USER
 
 BASE_DIR="$HOME/citrea-node"
@@ -84,10 +81,10 @@ uninstall_node() {
     
     cd $BASE_DIR
     echo "Stopping and removing containers with volumes..."
-    docker-compose down -v
+    docker-compose down -v || true
     
     echo "Removing Docker images..."
-    docker rmi bitcoin/bitcoin:28.0rc1 chainwayxyz/citrea-full-node:testnet
+    docker rmi -f bitcoin/bitcoin:28.0rc1 chainwayxyz/citrea-full-node:testnet containrrr/watchtower || true
     
     cd $INITIAL_DIR
     echo "Removing citrea-node directory..."
@@ -113,10 +110,15 @@ check_sync() {
         return
     fi
     
+    local current_port=$(grep "ROLLUP__RPC__BIND_PORT=" $BASE_DIR/docker-compose.yml | cut -d'=' -f2)
+    if [ -z "$current_port" ]; then
+        current_port="8080"
+    fi
+    
     echo "Checking sync status..."
     curl -X POST --header "Content-Type: application/json" \
         --data '{"jsonrpc":"2.0","method":"citrea_syncStatus","params":[], "id":31}' \
-        http://0.0.0.0:8080 | jq
+        "http://0.0.0.0:$current_port" | jq
 }
 
 show_menu() {
