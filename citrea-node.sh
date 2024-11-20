@@ -20,6 +20,11 @@ sudo usermod -aG docker $USER
 BASE_DIR="$HOME/citrea-node"
 INITIAL_DIR=$(pwd)
 
+add_watchtower() {
+    awk '/volumes:/{print "  watchtower:\n    image: containrrr/watchtower\n    container_name: watchtower\n    volumes:\n      - /var/run/docker.sock:/var/run/docker.sock\n    command: --interval 3600 bitcoin-testnet4 full-node\n    environment:\n      - WATCHTOWER_CLEANUP=true\n    restart: unless-stopped\n    networks:\n      - citrea-testnet-network\n"}1' docker-compose.yml > temp.yml
+    mv temp.yml docker-compose.yml
+}
+
 install_default() {
     if [ -d "$BASE_DIR" ]; then
         echo "Citrea node is already installed! Please uninstall it first."
@@ -29,6 +34,7 @@ install_default() {
     echo "Installing Citrea node with default settings..."
     mkdir -p $BASE_DIR && cd $BASE_DIR
     curl https://raw.githubusercontent.com/chainwayxyz/citrea/refs/heads/nightly/docker/docker-compose.yml --output docker-compose.yml
+    add_watchtower
     docker-compose up -d
     echo "Default installation completed!"
     cd $INITIAL_DIR
@@ -62,6 +68,7 @@ install_custom() {
     sed -i "s/ROLLUP__RPC__BIND_PORT=8080/ROLLUP__RPC__BIND_PORT=$rpc_port/" docker-compose.yml
     sed -i "s/- \"8080:8080\"/- \"$rpc_port:$rpc_port\"/" docker-compose.yml
     
+    add_watchtower
     docker-compose up -d
     echo "Custom installation completed!"
     cd $INITIAL_DIR
