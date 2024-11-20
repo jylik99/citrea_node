@@ -3,6 +3,20 @@
 echo "Installing required packages..."
 sudo apt install curl docker.io docker-compose jq -y
 
+# Start Docker service
+echo "Starting Docker service..."
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Check Docker service status
+if ! sudo systemctl is-active --quiet docker; then
+    echo "Error: Docker service is not running. Please check 'systemctl status docker' for details."
+    exit 1
+fi
+
+# Add current user to docker group
+sudo usermod -aG docker $USER
+
 BASE_DIR="$HOME/citrea-node"
 INITIAL_DIR=$(pwd)
 
@@ -10,12 +24,12 @@ install_default() {
     if [ -d "$BASE_DIR" ]; then
         echo "Citrea node is already installed! Please uninstall it first."
         return
-    }
+    fi
 
     echo "Installing Citrea node with default settings..."
     mkdir -p $BASE_DIR && cd $BASE_DIR
     curl https://raw.githubusercontent.com/chainwayxyz/citrea/refs/heads/nightly/docker/docker-compose.yml --output docker-compose.yml
-    docker compose up -d
+    docker-compose up -d
     echo "Default installation completed!"
     cd $INITIAL_DIR
 }
@@ -24,7 +38,7 @@ install_custom() {
     if [ -d "$BASE_DIR" ]; then
         echo "Citrea node is already installed! Please uninstall it first."
         return
-    }
+    fi
 
     echo "Installing Citrea node with custom settings..."
     
@@ -48,7 +62,7 @@ install_custom() {
     sed -i "s/ROLLUP__RPC__BIND_PORT=8080/ROLLUP__RPC__BIND_PORT=$rpc_port/" docker-compose.yml
     sed -i "s/- \"8080:8080\"/- \"$rpc_port:$rpc_port\"/" docker-compose.yml
     
-    docker compose up -d
+    docker-compose up -d
     echo "Custom installation completed!"
     cd $INITIAL_DIR
 }
@@ -63,7 +77,7 @@ uninstall_node() {
     
     cd $BASE_DIR
     echo "Stopping and removing containers with volumes..."
-    docker compose down -v
+    docker-compose down -v
     
     echo "Removing Docker images..."
     docker rmi bitcoin/bitcoin:28.0rc1 chainwayxyz/citrea-full-node:testnet
@@ -82,7 +96,7 @@ view_logs() {
         return
     fi
     
-    cd $BASE_DIR && docker compose logs
+    cd $BASE_DIR && docker-compose logs
     cd $INITIAL_DIR
 }
 
